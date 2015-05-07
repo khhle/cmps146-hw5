@@ -1,4 +1,5 @@
 import sys
+import time
 import json
 from collections import namedtuple
 import heapq
@@ -27,7 +28,7 @@ def make_item_index_list(items):
 def graph(state):
     for r in all_recipes:
         if r.check(state):
-            print str(r.name) + ' ' + str(r.effect(state))
+            #print str(r.name) + ' ' + str(r.effect(state))
             yield (r.name, r.effect(state), r.cost)
 
 
@@ -39,6 +40,7 @@ def make_checker(rule):
 
     if 'Consumes' in rule:
         consumes = rule['Consumes']
+        print consumes
     if 'Requires' in rule:
         requires = rule['Requires']
 
@@ -97,14 +99,65 @@ def is_goal(current_state):
             return False
     return True
 
-def heuristic(state):
+def heuristic(state,last_state):
     #print "state " + str(state)
 
-
+    #limit non consumable item to 1
     for item in non_consumables:
         index = items_index_list[non_consumables[item]]
         if state[index] > goal_state[index] and state[index] > 1:
             return sys.maxint
+
+
+    #limit the consumable item to 10
+    for item in consumables:
+        index = items_index_list[consumables[item]]
+        if state[index] > goal_state[index] and state[index] > 10:
+            return sys.maxint
+
+
+
+
+    #ore and coal limit
+    if state[8] > 1 and state[2] > 1:
+        return sys.maxint
+
+    #ingot limit
+    if state[5] > 6:
+        return sys.maxint
+
+    #plank limit
+    if state[9] > 7:
+        return sys.maxint
+
+
+    #stick limit
+    if state[11] > 4:
+        return sys.maxint
+
+    #wood limit
+    if state[14] > 2:
+        return sys.maxint
+
+
+
+
+
+    #if goal is ingot
+    if goal_state[5] > 1:
+        if state[16] < 1:
+            return 0
+        if state[7] < 1:
+            return 0
+        if state[4] < 1:
+            return 0
+
+        #focus on producing Ore, Coal, ingot
+        if state[2]-last_state[2] > 1 or state[8] - last_state[8] > 1 or state[5] - last_state[5] > 1:
+            return 0
+        else:
+            return sys.maxint
+
 
 
     return 0
@@ -120,11 +173,17 @@ def search(graph, initial, is_goal, limit, heuristic):
     cost_so_far[initial] = 0
     visited[initial] = ("Start", initial, 0)
     i = 0
+
+
+    t_start = time.time()
+    t_deadline = t_start + THINK_DURATION
+
+
     while not frontier.empty() and i < limit:
         i += 1
         #print i
         current = frontier.get()
-
+        print current
         if is_goal(current):
             break
 
@@ -137,10 +196,15 @@ def search(graph, initial, is_goal, limit, heuristic):
 
             if effect not in cost_so_far or new_cost < cost_so_far[effect]:
                 cost_so_far[effect] = new_cost
-                priority = new_cost + heuristic(effect)
+                priority = new_cost + heuristic(effect,current)
                 frontier.put(effect, priority)
                 came_from[effect] = current
                 visited[effect] = next
+
+        t_now = time.time()
+        if t_now > t_deadline:
+            print "Time out!!!"
+            break
 
     if not is_goal(current):
         return 0,[]
@@ -148,6 +212,7 @@ def search(graph, initial, is_goal, limit, heuristic):
 
     #if is_goal(current):
     print i
+    print 'Finish within: ' + str(t_now - t_start) + ' seconds.'
     plan = []
     total_cost = cost_so_far[current]
     while current:
@@ -180,11 +245,11 @@ class PriorityQueue:
         return heapq.heappop(self.elements)[1]
 
 
-
+THINK_DURATION = 30
 all_recipes = []
 items_index_list = {}
 items = []
-consumables = []
+consumables = {}
 non_consumables = {}
 inventory = {}
 goal = {}
@@ -199,7 +264,7 @@ with open('Crafting.json') as f:
 Recipe = namedtuple('Recipe',['name','check','effect','cost'])
 all_recipes = []
 for name,rule in Crafting['Recipes'].items():
-    print rule
+    #print rule
     checker = make_checker(rule)
     effector = make_effector(rule)
     recipe = Recipe(name, checker, effector, rule['Time'])
@@ -219,6 +284,14 @@ for i in [0, 1, 4, 6, 7, 12, 13, 15, 16]:
     non_consumables[temp] = items[i]
     temp += 1
 print 'Non Consumables: ' + str(non_consumables)
+
+#List of all consumable items
+temp = 0
+for i in [2, 3, 5, 8, 9, 10, 11, 14]:
+    consumables[temp] = items[i]
+    temp += 1
+print 'Consumables: ' + str(consumables)
+
 
 # List of items in your initial inventory with amounts:
 inventory =  Crafting['Initial']
