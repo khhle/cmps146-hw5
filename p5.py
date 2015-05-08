@@ -100,7 +100,6 @@ def is_goal(current_state):
     return True
 
 def heuristic(state,last_state):
-    #print "state " + str(state)
 
     #limit non consumable item to 1
     for item in non_consumables:
@@ -109,58 +108,36 @@ def heuristic(state,last_state):
             return sys.maxint
 
 
-    #limit the consumable item to 10
-    for item in consumables:
-        index = items_index_list[consumables[item]]
-        if state[index] > goal_state[index] and state[index] > 10:
-            return sys.maxint
+    #coal limit
+    if state[8] > 1 and state[8] > goal_state[8]:
+        return sys.maxint
 
-
-
-
-    #ore and coal limit
-    if state[8] > 1 and state[2] > 1:
+    #ore limit
+    if state[2] > 1 and state[2] > goal_state[2]:
         return sys.maxint
 
     #ingot limit
-    if state[5] > 6:
+    if state[5] > 6 and state[5] > goal_state[5]:
         return sys.maxint
 
     #plank limit
-    if state[9] > 7:
+    if state[9] > 4 and state[9] > goal_state[9]:
         return sys.maxint
 
-
     #stick limit
-    if state[11] > 4:
+    if state[11] > 4 and state[11] > goal_state[11]:
         return sys.maxint
 
     #wood limit
-    if state[14] > 2:
+    if state[14] > 1 and state[14] > goal_state[14]:
         return sys.maxint
 
-
-
-
-
-    #if goal is ingot
-    if goal_state[5] > 1:
-        if state[16] < 1:
-            return 0
-        if state[7] < 1:
-            return 0
-        if state[4] < 1:
-            return 0
-
-        #focus on producing Ore, Coal, ingot
-        if state[2]-last_state[2] > 1 or state[8] - last_state[8] > 1 or state[5] - last_state[5] > 1:
-            return 0
-        else:
-            return sys.maxint
-
-
+    #cobble limit
+    if state[3] > 8 and state[3] > goal_state[3]:
+        return sys.maxint
 
     return 0
+
 
 def search(graph, initial, is_goal, limit, heuristic):
     frontier = PriorityQueue()
@@ -180,17 +157,14 @@ def search(graph, initial, is_goal, limit, heuristic):
 
 
     while not frontier.empty() and i < limit:
-        i += 1
-        #print i
         current = frontier.get()
-        print current
+
         if is_goal(current):
             break
 
         neighborhood = graph(current)
 
         for next in neighborhood:
-            #print "next" + str(next)
             name, effect, neighborCost = next
             new_cost = cost_so_far[current] + neighborCost
 
@@ -209,10 +183,7 @@ def search(graph, initial, is_goal, limit, heuristic):
     if not is_goal(current):
         return 0,[]
 
-
-    #if is_goal(current):
-    print i
-    print 'Finish within: ' + str(t_now - t_start) + ' seconds.'
+    print '\nFinish within: ' + str(t_now - t_start) + ' seconds.'
     plan = []
     total_cost = cost_so_far[current]
     while current:
